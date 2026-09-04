@@ -271,25 +271,25 @@
       node.querySelector(".verdict-biased"),
       row.biased_result,
       row.biased_score,
-      row.biased_xai_reason,
+      row.biased_formula,
       row.biased_flagged
     );
     fillVerdict(
       node.querySelector(".verdict-fair"),
       row.fair_result,
       row.fair_score,
-      row.fair_xai_reason,
+      row.fair_formula,
       row.fair_flagged
     );
 
     return node;
   }
 
-  function fillVerdict(el, resultText, score, reason, flagged) {
+  function fillVerdict(el, resultText, score, formula, flagged) {
     const resultEl = el.querySelector(".verdict-result");
     resultEl.textContent = resultText;
     resultEl.classList.add(flagged ? "flagged" : "cleared");
-    el.querySelector(".verdict-score").textContent = `산출 점수: ${score.toFixed(2)}`;
-    el.querySelector(".verdict-reason").textContent = reason;
+    el.querySelector(".verdict-score").textContent = `산출 점수: ${score.toFixed(2)} / 기준치 1.70`;
+    el.querySelector(".verdict-reason").textContent = formula;
   }
 })();
