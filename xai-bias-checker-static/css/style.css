@@ -1,0 +1,369 @@
+/* ---------------------------------------------------------------
+   토큰
+   배경: 종이에 가까운 뉴트럴 화이트. 편향(red)/공정(green) 색상은
+   오직 판정 결과를 나타낼 때만 사용한다 (장식 목적 사용 금지).
+------------------------------------------------------------------ */
+:root {
+  --paper: #F7F6F2;
+  --paper-raised: #FCFBF9;
+  --ink: #1C1B19;
+  --ink-soft: #55524A;
+  --ink-faint: #8A867C;
+  --rule: #DBD7CA;
+  --rule-strong: #C7C2B2;
+
+  --flag-red: #A63D2B;
+  --flag-red-bg: #FBEEEA;
+  --clear-green: #2E5E45;
+  --clear-green-bg: #EBF2ED;
+
+  --serif: "Source Serif 4", Georgia, "Noto Serif KR", serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Noto Sans Mono KR", monospace;
+  --sans: "Inter", "Noto Sans KR", system-ui, sans-serif;
+
+  --content-width: 720px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------
+   Masthead
+------------------------------------------------------------------ */
+.masthead {
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 3.5rem 1.5rem 2.75rem;
+}
+
+.masthead-inner {
+  max-width: var(--content-width);
+  margin: 0 auto;
+}
+
+.masthead-kicker {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  margin: 0 0 0.9rem;
+}
+
+.masthead-title {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 5vw, 2.9rem);
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+
+.masthead-sub {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  max-width: 56ch;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------
+   Layout
+------------------------------------------------------------------ */
+.content {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2.75rem 1.5rem 4rem;
+}
+
+section + section { margin-top: 2.75rem; }
+
+/* ---------------------------------------------------------------
+   Intake (upload) slip
+------------------------------------------------------------------ */
+.intake-slip {
+  border: 1.5px dashed var(--rule-strong);
+  background: var(--paper-raised);
+  padding: 2rem 1.75rem;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.intake-slip.dragover {
+  border-color: var(--ink);
+  background: #FFFFFF;
+}
+
+.intake-label {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.intake-hint {
+  margin: 0 0 0.9rem;
+  color: var(--ink-soft);
+}
+
+.intake-columns {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  margin: 0 0 1.4rem;
+}
+
+.intake-columns code {
+  background: var(--rule);
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+}
+
+.intake-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.intake-file {
+  margin: 0.9rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.intake-error {
+  margin: 1rem 0 0;
+  color: var(--flag-red);
+  font-size: 0.92rem;
+  border-left: 3px solid var(--flag-red);
+  padding-left: 0.75rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.primary-btn {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.92rem;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 0.65rem 1.3rem;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  background: var(--rule);
+  border-color: var(--rule);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.primary-btn:not(:disabled):hover { background: #38352E; }
+
+.ghost-btn {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  padding: 0.6rem 1.2rem;
+  text-decoration: none;
+  background: transparent;
+}
+
+.ghost-btn:hover { border-color: var(--ink); }
+
+/* ---------------------------------------------------------------
+   Summary — the hero moment
+------------------------------------------------------------------ */
+.summary-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin: 0 0 0.6rem;
+}
+
+.summary-hero {
+  font-family: var(--serif);
+  font-size: clamp(1.4rem, 3.4vw, 1.85rem);
+  line-height: 1.35;
+  margin: 0;
+  max-width: 44ch;
+}
+
+.hero-number {
+  color: var(--flag-red);
+  font-weight: 700;
+}
+
+.summary-sub {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  margin: 0.6rem 0 0;
+}
+
+/* ---------------------------------------------------------------
+   Ledger + case rows
+------------------------------------------------------------------ */
+.ledger {
+  border-top: 1px solid var(--rule-strong);
+}
+
+.case {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1.5rem;
+  padding: 1.6rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.case-id {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0 0 0.6rem;
+}
+
+.case-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.7rem;
+}
+
+.tag {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  border: 1px solid var(--rule-strong);
+  padding: 0.15rem 0.5rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.case-flag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--flag-red);
+  border: 1px solid var(--flag-red);
+  padding: 0.15rem 0.5rem;
+  transform: rotate(-3deg);
+  margin: 0.2rem 0 0;
+}
+
+.case-verdicts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.verdict {
+  padding-left: 0.9rem;
+  border-left: 3px solid var(--rule-strong);
+}
+
+.verdict-biased { border-left-color: var(--flag-red); }
+.verdict-fair { border-left-color: var(--clear-green); }
+
+.verdict-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin: 0 0 0.15rem;
+}
+
+.verdict-result {
+  font-weight: 600;
+  font-size: 0.98rem;
+  margin: 0 0 0.15rem;
+}
+
+.verdict-biased .verdict-result.flagged { color: var(--flag-red); }
+.verdict-fair .verdict-result.flagged { color: var(--flag-red); }
+.verdict-result.cleared { color: var(--clear-green); }
+
+.verdict-score {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin: 0 0 0.4rem;
+}
+
+.verdict-reason {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 52ch;
+}
+
+/* ---------------------------------------------------------------
+   Empty state
+------------------------------------------------------------------ */
+.empty-state {
+  border-top: 1px solid var(--rule-strong);
+  padding-top: 2rem;
+  color: var(--ink-faint);
+}
+
+.empty-state p { margin: 0 0 0.3rem; }
+.empty-sub { font-size: 0.9rem; }
+
+/* ---------------------------------------------------------------
+   Footer
+------------------------------------------------------------------ */
+.colophon {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+}
+
+.colophon p { margin: 0; max-width: 62ch; }
+
+/* ---------------------------------------------------------------
+   Responsive
+------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .case {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+  .intake-actions { flex-direction: column; align-items: stretch; }
+  .ghost-btn, .primary-btn { text-align: center; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+/* Focus visibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

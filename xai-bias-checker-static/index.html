@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XAI 편향 감사 — 알고리즘 판단 대조 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="masthead-kicker">교육용 시연 도구 · 브라우저에서만 동작 (서버 전송 없음)</p>
+    <h1 class="masthead-title">XAI 편향 감사</h1>
+    <p class="masthead-sub">
+      같은 데이터를 두 개의 모델에 동시에 넣습니다. 하나는 인종을 가중치로 쓰고,
+      하나는 쓰지 않습니다. 두 판단이 갈리는 지점이 바로 편향의 증거입니다.
+    </p>
+  </div>
+</header>
+
+<main class="content">
+
+  <section class="intake" id="intake">
+    <div class="intake-slip" id="dropzone">
+      <input type="file" id="fileInput" accept=".csv" hidden />
+      <p class="intake-label">CSV 파일 등록</p>
+      <p class="intake-hint">
+        여기로 파일을 끌어다 놓거나 <button type="button" id="browseBtn" class="link-btn">파일 선택</button>
+      </p>
+      <p class="intake-columns">필요 컬럼: <code>suspect_id</code>, <code>race</code>(백인/흑인), <code>prior_record</code>(무전과/전과있음)</p>
+      <div class="intake-actions">
+        <a href="suspects_sample.csv" class="ghost-btn" download>샘플 CSV 받기</a>
+        <button type="button" id="analyzeBtn" class="primary-btn" disabled>분석 실행</button>
+      </div>
+      <p class="intake-file" id="fileName"></p>
+    </div>
+    <p class="intake-error" id="errorBox" hidden></p>
+  </section>
+
+  <section class="summary" id="summary" hidden>
+    <p class="summary-eyebrow">감사 요약</p>
+    <p class="summary-hero">
+      총 <span id="sumTotal">0</span>건 중
+      <span class="hero-number" id="sumFlipped">0</span>건에서
+      인종 요소로 인해 판단이 뒤집혔습니다
+    </p>
+    <p class="summary-sub" id="sumRate"></p>
+  </section>
+
+  <section class="ledger" id="ledger" aria-live="polite"></section>
+
+  <section class="empty-state" id="emptyState">
+    <p>아직 분석한 데이터가 없습니다.</p>
+    <p class="empty-sub">CSV를 등록하고 분석을 실행하면 사건별 대조 결과가 이 아래에 나타납니다.</p>
+  </section>
+
+</main>
+
+<footer class="colophon">
+  <p>
+    이 도구는 알고리즘 편향의 작동 방식을 보여주기 위한 합성 데이터 기반 시연입니다.
+    실제 수사·양형 판단에 사용되어서는 안 됩니다. 업로드한 CSV는 서버로 전송되지 않고
+    브라우저 안에서만 계산됩니다.
+  </p>
+</footer>
+
+<template id="caseTemplate">
+  <article class="case">
+    <div class="case-intake">
+      <p class="case-id"></p>
+      <p class="case-tags">
+        <span class="tag tag-race"></span>
+        <span class="tag tag-record"></span>
+      </p>
+      <p class="case-flag" hidden>판단 불일치</p>
+    </div>
+    <div class="case-verdicts">
+      <div class="verdict verdict-biased">
+        <p class="verdict-label">편향 모델</p>
+        <p class="verdict-result"></p>
+        <p class="verdict-score"></p>
+        <p class="verdict-reason"></p>
+      </div>
+      <div class="verdict verdict-fair">
+        <p class="verdict-label">공정 모델</p>
+        <p class="verdict-result"></p>
+        <p class="verdict-score"></p>
+        <p class="verdict-reason"></p>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script src="js/model.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
