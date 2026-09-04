@@ -17,6 +17,12 @@
   const emptyState = document.getElementById("emptyState");
   const caseTemplate = document.getElementById("caseTemplate");
 
+  const singleForm = document.getElementById("singleForm");
+  const singleId = document.getElementById("singleId");
+  const singleSubmitBtn = document.getElementById("singleSubmitBtn");
+  const singleError = document.getElementById("singleError");
+  const singleResult = document.getElementById("singleResult");
+
   const REQUIRED_COLUMNS = ["suspect_id", "race", "prior_record"];
   const MAX_ROWS = 2000;
 
@@ -60,6 +66,39 @@
     fileNameEl.textContent = `선택된 파일: ${file.name}`;
     analyzeBtn.disabled = false;
   }
+
+  // -------------------------------------------------------------
+  // 신규 인물 단건 판단 (칩 선택 + 폼 제출)
+  // -------------------------------------------------------------
+  const singleValues = { race: null, prior_record: null };
+
+  document.querySelectorAll(".chip-group").forEach((group) => {
+    const name = group.dataset.name;
+    group.querySelectorAll(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        singleValues[name] = chip.dataset.value;
+        singleSubmitBtn.disabled = !(singleValues.race && singleValues.prior_record);
+        singleError.hidden = true;
+      });
+    });
+  });
+
+  singleForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!singleValues.race || !singleValues.prior_record) {
+      singleError.textContent = "인종과 전과 이력을 모두 선택해주세요.";
+      singleError.hidden = false;
+      return;
+    }
+    const id = singleId.value.trim() || "신규 인물";
+    const result = analyzeRow(id, singleValues.race, singleValues.prior_record);
+
+    singleResult.innerHTML = "";
+    singleResult.appendChild(buildCaseCard(result));
+    singleResult.hidden = false;
+  });
 
   // -------------------------------------------------------------
   // CSV 파싱 (따옴표로 감싼 필드도 처리하는 간단한 파서)

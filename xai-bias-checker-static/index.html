@@ -25,6 +25,8 @@
 <main class="content">
 
   <section class="intake" id="intake">
+    <p class="section-eyebrow">여러 명 한 번에 분석</p>
+    <h2 class="section-title">CSV로 일괄 대조하기</h2>
     <div class="intake-slip" id="dropzone">
       <input type="file" id="fileInput" accept=".csv" hidden />
       <p class="intake-label">CSV 파일 등록</p>
@@ -39,6 +41,43 @@
       <p class="intake-file" id="fileName"></p>
     </div>
     <p class="intake-error" id="errorBox" hidden></p>
+  </section>
+
+  <section class="single-check" id="singleCheck">
+    <p class="section-eyebrow">신규 인물 판단</p>
+    <h2 class="section-title">한 명의 정보를 입력해 즉시 판단해보기</h2>
+    <p class="section-sub">
+      전과 이력과 인종만 골라서 넣으면, 편향 모델과 공정 모델이 이 사람을
+      각각 어떻게 판단하는지 바로 비교해서 보여줍니다.
+    </p>
+
+    <form class="single-form" id="singleForm">
+      <div class="field-group">
+        <label class="field-label" for="singleId">이름 / 식별자 (선택)</label>
+        <input type="text" id="singleId" class="text-input" placeholder="예: 홍길동" />
+      </div>
+
+      <div class="field-group">
+        <span class="field-label">인종</span>
+        <div class="chip-group" data-name="race">
+          <button type="button" class="chip" data-value="백인">백인</button>
+          <button type="button" class="chip" data-value="흑인">흑인</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <span class="field-label">전과 이력</span>
+        <div class="chip-group" data-name="prior_record">
+          <button type="button" class="chip" data-value="무전과">무전과</button>
+          <button type="button" class="chip" data-value="전과있음">전과있음</button>
+        </div>
+      </div>
+
+      <button type="submit" class="primary-btn" id="singleSubmitBtn" disabled>판단하기</button>
+      <p class="single-error" id="singleError" hidden></p>
+    </form>
+
+    <div class="single-result" id="singleResult"></div>
   </section>
 
   <section class="summary" id="summary" hidden>
