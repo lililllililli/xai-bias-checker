@@ -16,8 +16,10 @@
     <p class="masthead-kicker">교육용 시연 도구 · 브라우저에서만 동작 (서버 전송 없음)</p>
     <h1 class="masthead-title">XAI 편향 감사</h1>
     <p class="masthead-sub">
-      같은 데이터를 두 개의 모델에 동시에 넣습니다. 하나는 인종을 가중치로 쓰고,
-      하나는 쓰지 않습니다. 두 판단이 갈리는 지점이 바로 편향의 증거입니다.
+      가중치는 미리 정해두지 않습니다. 업로드한 과거 기록에서 인종·전과 이력이
+      실제 결과와 얼마나 관련 있었는지를 계산해 그 자리에서 학습합니다.
+      그렇게 학습된 가중치로, 편향 모델(인종 포함)과 공정 모델(인종 제외)이
+      새로운 사람을 각각 어떻게 판단하는지 비교합니다.
     </p>
   </div>
 </header>
@@ -25,30 +27,76 @@
 <main class="content">
 
   <section class="intake" id="intake">
-    <p class="section-eyebrow">여러 명 한 번에 분석</p>
-    <h2 class="section-title">CSV로 일괄 대조하기</h2>
+    <p class="section-eyebrow">1단계 · 데이터로 가중치 학습</p>
+    <h2 class="section-title">학습 데이터 업로드</h2>
+    <p class="section-sub">
+      실제 재범 여부가 포함된 과거 기록을 넣으면, 그 데이터 안에서
+      전과 이력과 인종 각각이 결과와 얼마나 관련 있었는지를 계산해
+      가중치를 만듭니다.
+    </p>
     <div class="intake-slip" id="dropzone">
       <input type="file" id="fileInput" accept=".csv" hidden />
       <p class="intake-label">CSV 파일 등록</p>
       <p class="intake-hint">
         여기로 파일을 끌어다 놓거나 <button type="button" id="browseBtn" class="link-btn">파일 선택</button>
       </p>
-      <p class="intake-columns">필요 컬럼: <code>suspect_id</code>, <code>race</code>(백인/흑인), <code>prior_record</code>(무전과/전과있음)</p>
+      <p class="intake-columns">
+        필요 컬럼: <code>suspect_id</code>, <code>race</code>(백인/흑인),
+        <code>prior_record</code>(무전과/전과있음), <code>reoffended</code>(재범여부: 예/아니오)
+      </p>
       <div class="intake-actions">
-        <a href="suspects_sample.csv" class="ghost-btn" download>샘플 CSV 받기</a>
-        <button type="button" id="analyzeBtn" class="primary-btn" disabled>분석 실행</button>
+        <a href="training_data_biased.csv" class="ghost-btn" download>예시: 편향적 데이터</a>
+        <a href="training_data_fair.csv" class="ghost-btn" download>예시: 공정한 데이터</a>
+        <button type="button" id="analyzeBtn" class="primary-btn" disabled>가중치 학습 + 분석</button>
       </div>
       <p class="intake-file" id="fileName"></p>
     </div>
     <p class="intake-error" id="errorBox" hidden></p>
   </section>
 
+  <section class="weights-panel" id="weightsPanel" hidden>
+    <p class="section-eyebrow">학습 결과</p>
+    <h2 class="section-title">이 데이터에서 학습된 가중치</h2>
+    <div class="weights-grid">
+      <div class="weight-cell">
+        <p class="weight-label">기준값<br /><span class="weight-sub">(백인·무전과 그룹 재범 비율)</span></p>
+        <p class="weight-value" id="wIntercept">-</p>
+      </div>
+      <div class="weight-cell">
+        <p class="weight-label">전과 가중치<br /><span class="weight-sub">(전과있음이 결과에 더한 영향)</span></p>
+        <p class="weight-value" id="wPrior">-</p>
+      </div>
+      <div class="weight-cell weight-cell-race">
+        <p class="weight-label">인종 가중치<br /><span class="weight-sub">(흑인이 결과에 더한 영향)</span></p>
+        <p class="weight-value" id="wRace">-</p>
+      </div>
+    </div>
+    <p class="weights-note" id="weightsNote"></p>
+  </section>
+
+  <section class="summary" id="summary" hidden>
+    <p class="summary-eyebrow">감사 요약</p>
+    <p class="summary-hero">
+      학습 데이터 <span id="sumTotal">0</span>건 중
+      <span class="hero-number" id="sumFlipped">0</span>건에서
+      인종 가중치 때문에 판단이 뒤집혔습니다
+    </p>
+    <p class="summary-sub" id="sumRate"></p>
+  </section>
+
+  <section class="ledger" id="ledger" aria-live="polite"></section>
+
+  <section class="empty-state" id="emptyState">
+    <p>아직 학습한 데이터가 없습니다.</p>
+    <p class="empty-sub">위에서 학습 데이터를 올리면 그룹별 재범 비율로 가중치를 계산하고, 각 기록에 대한 대조 결과가 이 아래에 나타납니다.</p>
+  </section>
+
   <section class="single-check" id="singleCheck">
-    <p class="section-eyebrow">신규 인물 판단</p>
-    <h2 class="section-title">한 명의 정보를 입력해 즉시 판단해보기</h2>
-    <p class="section-sub">
-      전과 이력과 인종만 골라서 넣으면, 편향 모델과 공정 모델이 이 사람을
-      각각 어떻게 판단하는지 바로 비교해서 보여줍니다.
+    <p class="section-eyebrow">2단계 · 신규 인물 판단</p>
+    <h2 class="section-title">방금 학습된 가중치로 새로운 사람 판단해보기</h2>
+    <p class="section-sub" id="singleSub">
+      먼저 위에서 학습 데이터를 업로드해야 가중치가 만들어지고, 그 가중치로
+      새로운 사람을 판단할 수 있습니다.
     </p>
 
     <form class="single-form" id="singleForm">
@@ -80,30 +128,13 @@
     <div class="single-result" id="singleResult"></div>
   </section>
 
-  <section class="summary" id="summary" hidden>
-    <p class="summary-eyebrow">감사 요약</p>
-    <p class="summary-hero">
-      총 <span id="sumTotal">0</span>건 중
-      <span class="hero-number" id="sumFlipped">0</span>건에서
-      인종 요소로 인해 판단이 뒤집혔습니다
-    </p>
-    <p class="summary-sub" id="sumRate"></p>
-  </section>
-
-  <section class="ledger" id="ledger" aria-live="polite"></section>
-
-  <section class="empty-state" id="emptyState">
-    <p>아직 분석한 데이터가 없습니다.</p>
-    <p class="empty-sub">CSV를 등록하고 분석을 실행하면 사건별 대조 결과가 이 아래에 나타납니다.</p>
-  </section>
-
 </main>
 
 <footer class="colophon">
   <p>
-    이 도구는 알고리즘 편향의 작동 방식을 보여주기 위한 합성 데이터 기반 시연입니다.
-    실제 수사·양형 판단에 사용되어서는 안 됩니다. 업로드한 CSV는 서버로 전송되지 않고
-    브라우저 안에서만 계산됩니다.
+    이 도구는 알고리즘 편향이 데이터로부터 어떻게 학습되는지를 보여주기 위한
+    합성 데이터 기반 시연입니다. 실제 수사·양형 판단에 사용되어서는 안 됩니다.
+    업로드한 CSV는 서버로 전송되지 않고 브라우저 안에서만 계산됩니다.
   </p>
 </footer>
 
@@ -114,6 +145,7 @@
       <p class="case-tags">
         <span class="tag tag-race"></span>
         <span class="tag tag-record"></span>
+        <span class="tag tag-actual" hidden></span>
       </p>
       <p class="case-flag" hidden>판단 불일치</p>
     </div>

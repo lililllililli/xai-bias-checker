@@ -8,6 +8,12 @@
   const fileNameEl = document.getElementById("fileName");
   const errorBox = document.getElementById("errorBox");
 
+  const weightsPanel = document.getElementById("weightsPanel");
+  const wIntercept = document.getElementById("wIntercept");
+  const wPrior = document.getElementById("wPrior");
+  const wRace = document.getElementById("wRace");
+  const weightsNote = document.getElementById("weightsNote");
+
   const summarySection = document.getElementById("summary");
   const sumTotal = document.getElementById("sumTotal");
   const sumFlipped = document.getElementById("sumFlipped");
@@ -17,16 +23,18 @@
   const emptyState = document.getElementById("emptyState");
   const caseTemplate = document.getElementById("caseTemplate");
 
+  const singleSub = document.getElementById("singleSub");
   const singleForm = document.getElementById("singleForm");
   const singleId = document.getElementById("singleId");
   const singleSubmitBtn = document.getElementById("singleSubmitBtn");
   const singleError = document.getElementById("singleError");
   const singleResult = document.getElementById("singleResult");
 
-  const REQUIRED_COLUMNS = ["suspect_id", "race", "prior_record"];
+  const REQUIRED_COLUMNS = ["suspect_id", "race", "prior_record", "reoffended"];
   const MAX_ROWS = 2000;
 
   let selectedFile = null;
+  let learnedWeights = null; // 1단계에서 학습되면 채워짐
 
   // -------------------------------------------------------------
   // 파일 선택 / 드래그앤드롭
@@ -66,39 +74,6 @@
     fileNameEl.textContent = `선택된 파일: ${file.name}`;
     analyzeBtn.disabled = false;
   }
-
-  // -------------------------------------------------------------
-  // 신규 인물 단건 판단 (칩 선택 + 폼 제출)
-  // -------------------------------------------------------------
-  const singleValues = { race: null, prior_record: null };
-
-  document.querySelectorAll(".chip-group").forEach((group) => {
-    const name = group.dataset.name;
-    group.querySelectorAll(".chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
-        chip.classList.add("selected");
-        singleValues[name] = chip.dataset.value;
-        singleSubmitBtn.disabled = !(singleValues.race && singleValues.prior_record);
-        singleError.hidden = true;
-      });
-    });
-  });
-
-  singleForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!singleValues.race || !singleValues.prior_record) {
-      singleError.textContent = "인종과 전과 이력을 모두 선택해주세요.";
-      singleError.hidden = false;
-      return;
-    }
-    const id = singleId.value.trim() || "신규 인물";
-    const result = analyzeRow(id, singleValues.race, singleValues.prior_record);
-
-    singleResult.innerHTML = "";
-    singleResult.appendChild(buildCaseCard(result));
-    singleResult.hidden = false;
-  });
 
   // -------------------------------------------------------------
   // CSV 파싱 (따옴표로 감싼 필드도 처리하는 간단한 파서)
@@ -147,39 +122,39 @@
   }
 
   // -------------------------------------------------------------
-  // 분석 실행 (전부 브라우저 안에서 처리, 서버 전송 없음)
+  // 1단계: 학습 데이터 업로드 → 가중치 학습 + 각 기록 대조
   // -------------------------------------------------------------
   analyzeBtn.addEventListener("click", () => {
     if (!selectedFile) return;
     hideError();
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = "분석 중…";
+    analyzeBtn.textContent = "학습 중…";
 
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        runAnalysis(reader.result);
+        runTraining(reader.result);
       } catch (err) {
         showError("CSV를 처리하는 중 오류가 발생했습니다. 형식을 확인해주세요.");
       } finally {
         analyzeBtn.disabled = false;
-        analyzeBtn.textContent = "분석 실행";
+        analyzeBtn.textContent = "가중치 학습 + 분석";
       }
     };
     reader.onerror = () => {
       showError("파일을 읽을 수 없습니다.");
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = "분석 실행";
+      analyzeBtn.textContent = "가중치 학습 + 분석";
     };
     reader.readAsText(selectedFile, "utf-8");
   });
 
-  function runAnalysis(text) {
+  function runTraining(text) {
     const { headers, rows } = parseCSV(text);
     const missing = REQUIRED_COLUMNS.filter((c) => !headers.includes(c));
     if (missing.length) {
       showError(
-        `필수 컬럼이 누락되었습니다: ${missing.join(", ")}. 필요한 컬럼: suspect_id, race, prior_record`
+        `필수 컬럼이 누락되었습니다: ${missing.join(", ")}. 필요한 컬럼: ${REQUIRED_COLUMNS.join(", ")}`
       );
       return;
     }
@@ -193,18 +168,43 @@
     }
 
     let skipped = 0;
-    const results = [];
-    rows.forEach((row, i) => {
-      const suspectId = (row.suspect_id || `ROW_${i + 1}`).trim();
+    const validRows = [];
+    rows.forEach((row) => {
       const race = (row.race || "").trim();
       const priorRecord = (row.prior_record || "").trim();
-
-      if (!["백인", "흑인"].includes(race) || !["무전과", "전과있음"].includes(priorRecord)) {
+      const reoffended = (row.reoffended || "").trim();
+      if (
+        !["백인", "흑인"].includes(race) ||
+        !["무전과", "전과있음"].includes(priorRecord) ||
+        !["예", "아니오"].includes(reoffended)
+      ) {
         skipped++;
         return;
       }
-      results.push(analyzeRow(suspectId, race, priorRecord));
+      validRows.push({
+        suspect_id: (row.suspect_id || "").trim() || `ROW_${validRows.length + 1}`,
+        race,
+        prior_record: priorRecord,
+        reoffended,
+      });
     });
+
+    if (validRows.length === 0) {
+      showError("형식이 맞는 학습 데이터가 없습니다. 컬럼 값(백인/흑인, 무전과/전과있음, 예/아니오)을 확인해주세요.");
+      return;
+    }
+
+    // 가중치 학습
+    learnedWeights = learnWeights(validRows);
+    renderWeightsPanel(learnedWeights);
+    unlockSingleForm();
+
+    // 학습에 쓰인 각 기록에 대해서도 두 모델의 판단을 계산해서 보여준다 (감사용)
+    const results = validRows.map((r) =>
+      Object.assign(analyzeRow(r.suspect_id, r.race, r.prior_record, learnedWeights), {
+        actual: r.reoffended,
+      })
+    );
 
     const total = results.length;
     const flipped = results.filter((r) => r.is_flipped).length;
@@ -218,6 +218,26 @@
     });
   }
 
+  function renderWeightsPanel(w) {
+    wIntercept.textContent = w.intercept.toFixed(2);
+    wPrior.textContent = (w.wPrior >= 0 ? "+" : "") + w.wPrior.toFixed(2);
+    wRace.textContent = (w.wRace >= 0 ? "+" : "") + w.wRace.toFixed(2);
+
+    const raceMagnitude = Math.abs(w.wRace);
+    if (raceMagnitude < 0.03) {
+      weightsNote.textContent = `표본 ${w.n}건 기준, 이 데이터에서는 인종 가중치가 거의 0으로 학습되었습니다.`;
+    } else {
+      weightsNote.textContent = `표본 ${w.n}건 기준, 이 데이터에서는 인종 가중치가 ${w.wRace.toFixed(2)}로 학습되었습니다 (0에서 멀수록 결과에 영향이 큽니다).`;
+    }
+    weightsPanel.hidden = false;
+  }
+
+  function unlockSingleForm() {
+    singleSub.textContent =
+      "방금 학습된 가중치를 그대로 사용합니다. 인종과 전과 이력을 골라 판단해보세요.";
+    document.querySelectorAll(".chip").forEach((chip) => (chip.disabled = false));
+  }
+
   function showError(msg) {
     errorBox.textContent = msg;
     errorBox.hidden = false;
@@ -229,6 +249,44 @@
   }
 
   // -------------------------------------------------------------
+  // 2단계: 신규 인물 단건 판단 (칩 선택 + 폼 제출)
+  // -------------------------------------------------------------
+  const singleValues = { race: null, prior_record: null };
+
+  document.querySelectorAll(".chip-group").forEach((group) => {
+    const name = group.dataset.name;
+    group.querySelectorAll(".chip").forEach((chip) => {
+      chip.disabled = true; // 학습 전에는 비활성화
+      chip.addEventListener("click", () => {
+        group.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
+        chip.classList.add("selected");
+        singleValues[name] = chip.dataset.value;
+        singleSubmitBtn.disabled = !(singleValues.race && singleValues.prior_record);
+        singleError.hidden = true;
+      });
+    });
+  });
+
+  singleForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!learnedWeights) {
+      singleError.textContent = "먼저 위에서 학습 데이터를 업로드해 가중치를 학습시켜주세요.";
+      singleError.hidden = false;
+      return;
+    }
+    if (!singleValues.race || !singleValues.prior_record) {
+      singleError.textContent = "인종과 전과 이력을 모두 선택해주세요.";
+      singleError.hidden = false;
+      return;
+    }
+    const id = singleId.value.trim() || "신규 인물";
+    const result = analyzeRow(id, singleValues.race, singleValues.prior_record, learnedWeights);
+
+    singleResult.innerHTML = "";
+    singleResult.appendChild(buildCaseCard(result));
+  });
+
+  // -------------------------------------------------------------
   // 결과 렌더링
   // -------------------------------------------------------------
   function renderResults(data) {
@@ -237,8 +295,6 @@
     if (!data.total) {
       emptyState.hidden = false;
       summarySection.hidden = true;
-      if (!data.skipped) showError("분석할 수 있는 유효한 행이 없습니다.");
-      else showError(`형식이 맞지 않아 ${data.skipped}건을 모두 건너뛰었습니다.`);
       return;
     }
 
@@ -248,7 +304,7 @@
     sumFlipped.textContent = data.flipped_count;
 
     const pct = Math.round((data.flipped_rate || 0) * 100);
-    let rateNote = `전체의 ${pct}%가 인종 요소만으로 판단이 뒤집혔습니다.`;
+    let rateNote = `전체의 ${pct}%가 인종 가중치 때문에 판단이 뒤집혔습니다.`;
     if (data.skipped) {
       rateNote += ` (형식이 맞지 않아 건너뛴 행 ${data.skipped}건)`;
     }
@@ -263,6 +319,12 @@
     node.querySelector(".case-id").textContent = row.suspect_id;
     node.querySelector(".tag-race").textContent = row.race;
     node.querySelector(".tag-record").textContent = row.prior_record;
+
+    const actualTag = node.querySelector(".tag-actual");
+    if (row.actual) {
+      actualTag.textContent = `실제 재범: ${row.actual}`;
+      actualTag.hidden = false;
+    }
 
     const flag = node.querySelector(".case-flag");
     if (row.is_flipped) flag.hidden = false;
@@ -289,7 +351,7 @@
     const resultEl = el.querySelector(".verdict-result");
     resultEl.textContent = resultText;
     resultEl.classList.add(flagged ? "flagged" : "cleared");
-    el.querySelector(".verdict-score").textContent = `산출 점수: ${score.toFixed(2)} / 기준치 1.70`;
+    el.querySelector(".verdict-score").textContent = `산출 점수: ${score.toFixed(2)} / 기준치 0.50`;
     el.querySelector(".verdict-reason").textContent = formula;
   }
 })();
