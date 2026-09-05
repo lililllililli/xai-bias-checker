@@ -14,9 +14,15 @@
   const wRace = document.getElementById("wRace");
   const weightsNote = document.getElementById("weightsNote");
 
+  const disparityPanel = document.getElementById("disparityPanel");
+  const dispWhite = document.getElementById("dispWhite");
+  const dispWhiteN = document.getElementById("dispWhiteN");
+  const dispBlack = document.getElementById("dispBlack");
+  const dispBlackN = document.getElementById("dispBlackN");
+
   const summarySection = document.getElementById("summary");
   const sumTotal = document.getElementById("sumTotal");
-  const sumFlipped = document.getElementById("sumFlipped");
+  const sumFlagged = document.getElementById("sumFlagged");
   const sumRate = document.getElementById("sumRate");
 
   const ledger = document.getElementById("ledger");
@@ -34,7 +40,7 @@
   const MAX_ROWS = 2000;
 
   let selectedFile = null;
-  let learnedWeights = null; // 1단계에서 학습되면 채워짐
+  let learnedWeights = null; // 1단계에서 학습되면 채워짐. 이 값 외에 다른 가중치는 없다.
 
   // -------------------------------------------------------------
   // 파일 선택 / 드래그앤드롭
@@ -122,7 +128,7 @@
   }
 
   // -------------------------------------------------------------
-  // 1단계: 학습 데이터 업로드 → 가중치 학습 + 각 기록 대조
+  // 1단계: 학습 데이터 업로드 → 가중치 학습 + 각 기록 판정
   // -------------------------------------------------------------
   analyzeBtn.addEventListener("click", () => {
     if (!selectedFile) return;
@@ -194,28 +200,20 @@
       return;
     }
 
-    // 가중치 학습
+    // 이 함수 호출 하나가 가중치의 유일한 출처다. 다른 곳에 숫자는 없다.
     learnedWeights = learnWeights(validRows);
     renderWeightsPanel(learnedWeights);
     unlockSingleForm();
 
-    // 학습에 쓰인 각 기록에 대해서도 두 모델의 판단을 계산해서 보여준다 (감사용)
+    // 학습에 쓰인 각 기록에 대해, 학습된 가중치 하나로만 판정한다.
     const results = validRows.map((r) =>
       Object.assign(analyzeRow(r.suspect_id, r.race, r.prior_record, learnedWeights), {
         actual: r.reoffended,
       })
     );
 
-    const total = results.length;
-    const flipped = results.filter((r) => r.is_flipped).length;
-
-    renderResults({
-      total,
-      skipped,
-      flipped_count: flipped,
-      flipped_rate: total ? flipped / total : 0,
-      results,
-    });
+    renderDisparity(results);
+    renderResults(results, skipped);
   }
 
   function renderWeightsPanel(w) {
@@ -227,9 +225,27 @@
     if (raceMagnitude < 0.03) {
       weightsNote.textContent = `표본 ${w.n}건 기준, 이 데이터에서는 인종 가중치가 거의 0으로 학습되었습니다.`;
     } else {
-      weightsNote.textContent = `표본 ${w.n}건 기준, 이 데이터에서는 인종 가중치가 ${w.wRace.toFixed(2)}로 학습되었습니다 (0에서 멀수록 결과에 영향이 큽니다).`;
+      weightsNote.textContent = `표본 ${w.n}건 기준, 이 데이터에서는 인종 가중치가 ${w.wRace.toFixed(2)}로 학습되었습니다 (전과 가중치 ${w.wPrior.toFixed(2)}와 비교해보세요).`;
     }
     weightsPanel.hidden = false;
+  }
+
+  function renderDisparity(results) {
+    const byRace = { 백인: [], 흑인: [] };
+    results.forEach((r) => {
+      if (byRace[r.race]) byRace[r.race].push(r);
+    });
+
+    const rate = (arr) => (arr.length ? arr.filter((r) => r.flagged).length / arr.length : 0);
+    const whiteArr = byRace["백인"];
+    const blackArr = byRace["흑인"];
+
+    dispWhite.textContent = `${Math.round(rate(whiteArr) * 100)}%`;
+    dispWhiteN.textContent = `${whiteArr.filter((r) => r.flagged).length} / ${whiteArr.length}건`;
+    dispBlack.textContent = `${Math.round(rate(blackArr) * 100)}%`;
+    dispBlackN.textContent = `${blackArr.filter((r) => r.flagged).length} / ${blackArr.length}건`;
+
+    disparityPanel.hidden = false;
   }
 
   function unlockSingleForm() {
@@ -289,10 +305,10 @@
   // -------------------------------------------------------------
   // 결과 렌더링
   // -------------------------------------------------------------
-  function renderResults(data) {
+  function renderResults(results, skipped) {
     ledger.innerHTML = "";
 
-    if (!data.total) {
+    if (!results.length) {
       emptyState.hidden = false;
       summarySection.hidden = true;
       return;
@@ -300,17 +316,18 @@
 
     emptyState.hidden = true;
     summarySection.hidden = false;
-    sumTotal.textContent = data.total;
-    sumFlipped.textContent = data.flipped_count;
+    sumTotal.textContent = results.length;
+    const flaggedCount = results.filter((r) => r.flagged).length;
+    sumFlagged.textContent = flaggedCount;
 
-    const pct = Math.round((data.flipped_rate || 0) * 100);
-    let rateNote = `전체의 ${pct}%가 인종 가중치 때문에 판단이 뒤집혔습니다.`;
-    if (data.skipped) {
-      rateNote += ` (형식이 맞지 않아 건너뛴 행 ${data.skipped}건)`;
+    const pct = Math.round((flaggedCount / results.length) * 100);
+    let rateNote = `전체의 ${pct}%가 유력 용의자로 판정되었습니다.`;
+    if (skipped) {
+      rateNote += ` (형식이 맞지 않아 건너뛴 행 ${skipped}건)`;
     }
     sumRate.textContent = rateNote;
 
-    data.results.forEach((row) => ledger.appendChild(buildCaseCard(row)));
+    results.forEach((row) => ledger.appendChild(buildCaseCard(row)));
   }
 
   function buildCaseCard(row) {
@@ -326,32 +343,13 @@
       actualTag.hidden = false;
     }
 
-    const flag = node.querySelector(".case-flag");
-    if (row.is_flipped) flag.hidden = false;
-
-    fillVerdict(
-      node.querySelector(".verdict-biased"),
-      row.biased_result,
-      row.biased_score,
-      row.biased_formula,
-      row.biased_flagged
-    );
-    fillVerdict(
-      node.querySelector(".verdict-fair"),
-      row.fair_result,
-      row.fair_score,
-      row.fair_formula,
-      row.fair_flagged
-    );
+    const resultEl = node.querySelector(".verdict-result");
+    resultEl.textContent = row.result;
+    resultEl.classList.add(row.flagged ? "flagged" : "cleared");
+    node.querySelector(".case-verdict").classList.add(row.flagged ? "flagged" : "cleared");
+    node.querySelector(".verdict-score").textContent = `산출 점수: ${row.score.toFixed(2)} / 기준치 0.50`;
+    node.querySelector(".verdict-reason").textContent = row.formula;
 
     return node;
-  }
-
-  function fillVerdict(el, resultText, score, formula, flagged) {
-    const resultEl = el.querySelector(".verdict-result");
-    resultEl.textContent = resultText;
-    resultEl.classList.add(flagged ? "flagged" : "cleared");
-    el.querySelector(".verdict-score").textContent = `산출 점수: ${score.toFixed(2)} / 기준치 0.50`;
-    el.querySelector(".verdict-reason").textContent = formula;
   }
 })();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>XAI 편향 감사 — 알고리즘 판단 대조 시스템</title>
+<title>XAI 편향 감사 — 데이터로 학습하는 단일 모델</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,10 +16,11 @@
     <p class="masthead-kicker">교육용 시연 도구 · 브라우저에서만 동작 (서버 전송 없음)</p>
     <h1 class="masthead-title">XAI 편향 감사</h1>
     <p class="masthead-sub">
-      가중치는 미리 정해두지 않습니다. 업로드한 과거 기록에서 인종·전과 이력이
-      실제 결과와 얼마나 관련 있었는지를 계산해 그 자리에서 학습합니다.
-      그렇게 학습된 가중치로, 편향 모델(인종 포함)과 공정 모델(인종 제외)이
-      새로운 사람을 각각 어떻게 판단하는지 비교합니다.
+      모델은 하나뿐입니다. 이 모델의 가중치는 업로드한 데이터에서만 계산되고,
+      코드 어디에도 미리 정해둔 값은 없습니다. 같은 모델에 편향된 데이터를
+      학습시키면 편향된 판단이, 인종과 무관하게 설계된 데이터를 학습시키면
+      인종과 무관한 판단이 나옵니다 — 편향은 모델 설계가 아니라 데이터에서
+      옵니다.
     </p>
   </div>
 </header>
@@ -32,7 +33,7 @@
     <p class="section-sub">
       실제 재범 여부가 포함된 과거 기록을 넣으면, 그 데이터 안에서
       전과 이력과 인종 각각이 결과와 얼마나 관련 있었는지를 계산해
-      가중치를 만듭니다.
+      가중치를 만듭니다. 이 값은 전적으로 지금 올리는 데이터에 달려 있습니다.
     </p>
     <div class="intake-slip" id="dropzone">
       <input type="file" id="fileInput" accept=".csv" hidden />
@@ -57,6 +58,10 @@
   <section class="weights-panel" id="weightsPanel" hidden>
     <p class="section-eyebrow">학습 결과</p>
     <h2 class="section-title">이 데이터에서 학습된 가중치</h2>
+    <p class="section-sub">
+      아래 세 값 모두 지금 올린 데이터에서 계산된 것입니다. 사전에 설정된
+      값은 없습니다.
+    </p>
     <div class="weights-grid">
       <div class="weight-cell">
         <p class="weight-label">기준값<br /><span class="weight-sub">(백인·무전과 그룹 재범 비율)</span></p>
@@ -74,12 +79,34 @@
     <p class="weights-note" id="weightsNote"></p>
   </section>
 
+  <section class="disparity-panel" id="disparityPanel" hidden>
+    <p class="section-eyebrow">학습된 모델의 실제 판정 결과</p>
+    <h2 class="section-title">인종별 유력 용의자 판정 비율</h2>
+    <p class="section-sub">
+      "공정 모델"을 따로 만든 게 아니라, 방금 학습된 단일 모델이 이 학습
+      데이터 안의 각 사람을 실제로 어떻게 판정했는지를 인종별로 집계한
+      것입니다.
+    </p>
+    <div class="disparity-grid">
+      <div class="disparity-cell">
+        <p class="disparity-label">백인</p>
+        <p class="disparity-value" id="dispWhite">-</p>
+        <p class="disparity-n" id="dispWhiteN"></p>
+      </div>
+      <div class="disparity-cell">
+        <p class="disparity-label">흑인</p>
+        <p class="disparity-value" id="dispBlack">-</p>
+        <p class="disparity-n" id="dispBlackN"></p>
+      </div>
+    </div>
+  </section>
+
   <section class="summary" id="summary" hidden>
     <p class="summary-eyebrow">감사 요약</p>
     <p class="summary-hero">
       학습 데이터 <span id="sumTotal">0</span>건 중
-      <span class="hero-number" id="sumFlipped">0</span>건에서
-      인종 가중치 때문에 판단이 뒤집혔습니다
+      <span class="hero-number" id="sumFlagged">0</span>건이
+      유력 용의자로 판정되었습니다
     </p>
     <p class="summary-sub" id="sumRate"></p>
   </section>
@@ -88,7 +115,7 @@
 
   <section class="empty-state" id="emptyState">
     <p>아직 학습한 데이터가 없습니다.</p>
-    <p class="empty-sub">위에서 학습 데이터를 올리면 그룹별 재범 비율로 가중치를 계산하고, 각 기록에 대한 대조 결과가 이 아래에 나타납니다.</p>
+    <p class="empty-sub">위에서 학습 데이터를 올리면 그룹별 재범 비율로 가중치를 계산하고, 각 기록에 대한 판정 결과가 이 아래에 나타납니다.</p>
   </section>
 
   <section class="single-check" id="singleCheck">
@@ -147,21 +174,12 @@
         <span class="tag tag-record"></span>
         <span class="tag tag-actual" hidden></span>
       </p>
-      <p class="case-flag" hidden>판단 불일치</p>
     </div>
-    <div class="case-verdicts">
-      <div class="verdict verdict-biased">
-        <p class="verdict-label">편향 모델</p>
-        <p class="verdict-result"></p>
-        <p class="verdict-score"></p>
-        <p class="verdict-reason"></p>
-      </div>
-      <div class="verdict verdict-fair">
-        <p class="verdict-label">공정 모델</p>
-        <p class="verdict-result"></p>
-        <p class="verdict-score"></p>
-        <p class="verdict-reason"></p>
-      </div>
+    <div class="case-verdict">
+      <p class="verdict-label">AI 판정 (학습된 가중치 적용)</p>
+      <p class="verdict-result"></p>
+      <p class="verdict-score"></p>
+      <p class="verdict-reason"></p>
     </div>
   </article>
 </template>

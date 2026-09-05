@@ -243,6 +243,52 @@ section + section { margin-top: 2.75rem; }
 }
 
 /* ---------------------------------------------------------------
+   Disparity panel (observed flagging rate by race, from the
+   single learned model — not a separately constructed "fair" model)
+------------------------------------------------------------------ */
+.disparity-panel {
+  border-top: 1px solid var(--rule-strong);
+  padding-top: 2.75rem;
+}
+
+.disparity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--rule-strong);
+  border: 1px solid var(--rule-strong);
+  margin-top: 1.25rem;
+}
+
+.disparity-cell {
+  background: var(--paper-raised);
+  padding: 1.5rem 1.1rem;
+  text-align: center;
+}
+
+.disparity-label {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.6rem;
+}
+
+.disparity-value {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 2.2rem;
+  margin: 0;
+  color: var(--flag-red);
+}
+
+.disparity-n {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin: 0.4rem 0 0;
+}
+
+/* ---------------------------------------------------------------
    Intake (upload) slip
 ------------------------------------------------------------------ */
 .intake-slip {
@@ -416,31 +462,13 @@ section + section { margin-top: 2.75rem; }
   white-space: nowrap;
 }
 
-.case-flag {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--flag-red);
-  border: 1px solid var(--flag-red);
-  padding: 0.15rem 0.5rem;
-  transform: rotate(-3deg);
-  margin: 0.2rem 0 0;
-}
-
-.case-verdicts {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-
-.verdict {
+.case-verdict {
   padding-left: 0.9rem;
   border-left: 3px solid var(--rule-strong);
 }
 
-.verdict-biased { border-left-color: var(--flag-red); }
-.verdict-fair { border-left-color: var(--clear-green); }
+.case-verdict.flagged { border-left-color: var(--flag-red); }
+.case-verdict.cleared { border-left-color: var(--clear-green); }
 
 .verdict-label {
   font-family: var(--mono);
@@ -455,8 +483,7 @@ section + section { margin-top: 2.75rem; }
   margin: 0 0 0.15rem;
 }
 
-.verdict-biased .verdict-result.flagged { color: var(--flag-red); }
-.verdict-fair .verdict-result.flagged { color: var(--flag-red); }
+.verdict-result.flagged { color: var(--flag-red); }
 .verdict-result.cleared { color: var(--clear-green); }
 
 .verdict-score {
@@ -513,6 +540,7 @@ section + section { margin-top: 2.75rem; }
   .intake-actions { flex-direction: column; align-items: stretch; }
   .ghost-btn, .primary-btn { text-align: center; }
   .weights-grid { grid-template-columns: 1fr; }
+  .disparity-grid { grid-template-columns: 1fr; }
 }
 
 /* Reduced motion */
